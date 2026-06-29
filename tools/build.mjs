@@ -17,6 +17,8 @@ const site = {
   adsenseClientId: config.adsenseClientId.trim(),
   adsensePublisherId: config.adsensePublisherId.trim(),
   searchConsoleVerification: config.searchConsoleVerification.trim(),
+  spotifyPlaylistUrl: (config.spotifyPlaylistUrl || "").trim(),
+  youtubePlaylistUrl: (config.youtubePlaylistUrl || "").trim(),
 };
 
 const byYear = groupBy(songs, (song) => song.year);
@@ -43,7 +45,7 @@ console.log(
 );
 
 function cleanGenerated() {
-  for (const dir of ["songs", "artists", "countries", "years", "timeline", "glossary", "about", "contact", "privacy"]) {
+  for (const dir of ["songs", "artists", "countries", "years", "timeline", "listen", "glossary", "about", "contact", "privacy"]) {
     fs.rmSync(path.join(root, dir), { recursive: true, force: true });
   }
   fs.rmSync(path.join(root, "sitemap.xml"), { force: true });
@@ -371,6 +373,7 @@ function generateSitemap() {
     { path: "/", lastmod: siteUpdatedAt, changefreq: "daily", priority: "1.0" },
     { path: "/artists/", lastmod: siteUpdatedAt, changefreq: "weekly", priority: "0.8" },
     { path: "/timeline/", lastmod: siteUpdatedAt, changefreq: "weekly", priority: "0.8" },
+    { path: "/listen/", lastmod: siteUpdatedAt, changefreq: "weekly", priority: "0.8" },
     { path: "/glossary/", lastmod: siteUpdatedAt, changefreq: "monthly", priority: "0.7" },
     { path: "/about/", lastmod: siteUpdatedAt, changefreq: "monthly", priority: "0.3" },
     { path: "/contact/", lastmod: siteUpdatedAt, changefreq: "monthly", priority: "0.2" },
@@ -482,6 +485,7 @@ function homepageStaticLinks() {
 <div class="link-cloud" aria-label="Atlas browsing links">
   <a href="artists/">Artists</a>
   <a href="timeline/">Timeline</a>
+  <a href="listen/">Listen</a>
   <a href="glossary/">Glossary</a>
   ${songs.map((song) => `<a href="songs/${encodeURIComponent(song.slug)}/">${escapeHtml(song.title)}</a>`).join("\n  ")}
   ${countries.map(([slug, label]) => `<a href="countries/${encodeURIComponent(slug)}/">${escapeHtml(label)}</a>`).join("\n  ")}
@@ -490,7 +494,63 @@ function homepageStaticLinks() {
 <p class="index-note">Use these links to jump straight into the song history, country context, or tournament year you remember.</p>`;
 }
 
+function playlistCard({ eyebrow, title, body, url, label, className }) {
+  if (!url) return "";
+  return `<article class="playlist-card ${className}">
+    <p class="kicker">${escapeHtml(eyebrow)}</p>
+    <h2>${escapeHtml(title)}</h2>
+    <p>${escapeHtml(body)}</p>
+    <a class="button primary" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>
+  </article>`;
+}
+
 function generateUtilityPages() {
+  writePage(
+    ["listen"],
+    layout({
+      title: "Listen to World Cup Songs and Fan Anthems",
+      description:
+        "Open the World Cup Music Atlas Spotify and YouTube playlists for official World Cup songs, classic tournament tracks, and fan anthems.",
+      depth: 1,
+      path: "/listen/",
+      schema: simplePageSchema("Listen", `Official playlist links for ${site.name}.`, "/listen/"),
+      body: `
+        <main class="article-page listen-page">
+          ${simpleBreadcrumb("Listen", "../")}
+          <section class="detail-hero">
+            <p class="kicker">Official platform links</p>
+            <h1>Listen to the atlas</h1>
+            <p>Open the public Spotify and YouTube playlists that collect songs referenced across ${escapeHtml(site.name)}. The site explains the context; Spotify and YouTube handle licensed playback.</p>
+          </section>
+          <section class="listen-grid" aria-label="World Cup Music Atlas playlists">
+            ${playlistCard({
+              eyebrow: "Spotify playlist",
+              title: "World Cup Music Atlas: Songs & Fan Anthems",
+              body:
+                "A starter listening list for official songs, classic tournament tracks, and fan favorites. Availability can vary by country.",
+              url: site.spotifyPlaylistUrl,
+              label: "Open on Spotify",
+              className: "spotify-card",
+            })}
+            ${playlistCard({
+              eyebrow: "YouTube playlist",
+              title: "World Cup Music Atlas: Songs & Fan Anthems",
+              body:
+                "A public video playlist for official uploads and platform-safe watching as the archive grows.",
+              url: site.youtubePlaylistUrl,
+              label: "Open on YouTube",
+              className: "youtube-card",
+            })}
+          </section>
+          <section class="context-section" aria-labelledby="rights-title">
+            <h2 id="rights-title">How these playlists are used</h2>
+            <p>${escapeHtml(site.name)} links out to official or reputable platform pages instead of hosting copyrighted audio, copied videos, or lyrics. Song pages keep the editorial context here, then send listeners to licensed platforms.</p>
+          </section>
+        </main>
+      `,
+    })
+  );
+
   writePage(
     ["glossary"],
     layout({
@@ -675,6 +735,7 @@ function layout({ title, description, depth, path: pagePath, type = "website", s
         <a href="${prefix}index.html#library">Library</a>
         <a href="${prefix}artists/">Artists</a>
         <a href="${prefix}timeline/">Timeline</a>
+        <a href="${prefix}listen/">Listen</a>
         <a href="${prefix}glossary/">Glossary</a>
         <a href="${prefix}about/">About</a>
       </nav>
@@ -685,6 +746,7 @@ function layout({ title, description, depth, path: pagePath, type = "website", s
       <div class="footer-links">
         <a href="${prefix}artists/">Artists</a>
         <a href="${prefix}timeline/">Timeline</a>
+        <a href="${prefix}listen/">Listen</a>
         <a href="${prefix}glossary/">Glossary</a>
         <a href="${prefix}about/">About</a>
         <a href="${prefix}contact/">Contact</a>
@@ -993,12 +1055,7 @@ function statList(song, prefix) {
 }
 
 function watchSection(song) {
-  const primaryUrl = song.watchUrl || song.sourceUrl;
-  const primaryLabel = song.watchLabel || song.sourceLabel || "Open source";
-  const actions = [{ label: primaryLabel, url: primaryUrl, style: "primary" }];
-  if (song.sourceUrl !== primaryUrl) {
-    actions.push({ label: song.sourceLabel, url: song.sourceUrl, style: "secondary" });
-  }
+  const actions = listeningActions(song);
   const embed = song.youtubeId
     ? `<div class="video-frame">
         <iframe
@@ -1011,11 +1068,11 @@ function watchSection(song) {
         ></iframe>
       </div>`
     : `<div class="watch-placeholder">
-        <strong>${song.watchUrl ? "Watch on the official platform" : "Official embed not confirmed yet"}</strong>
+        <strong>${song.watchUrl ? "Open the official video or stream" : "Open the song on a licensed platform"}</strong>
         <p>${
           song.watchUrl
-            ? "This official video may only play on its original platform, so we link out instead of showing a blocked player."
-            : "Use the source link below for verified information. We do not embed unofficial uploads."
+            ? "Some official videos only play on their original platform. Spotify availability can also vary by country."
+            : "Use Spotify search and source links below. We do not embed unofficial uploads or host copyrighted audio."
         }</p>
       </div>`;
 
@@ -1029,12 +1086,77 @@ function watchSection(song) {
       ${actions
         .map(
           (action) =>
-            `<a class="button ${action.style}" href="${action.url}" target="_blank" rel="noreferrer">${escapeHtml(action.label)}</a>`
+            `<a class="button ${action.style}" href="${escapeHtml(action.url)}"${action.external ? ' target="_blank" rel="noreferrer"' : ""}>${escapeHtml(action.label)}</a>`
         )
         .join("")}
     </div>
+    ${atlasPlaylistActions()}
     <p class="rights-note">No lyrics, audio files, or copied video are hosted on this site.</p>
   </section>`;
+}
+
+function atlasPlaylistActions() {
+  const links = [
+    site.spotifyPlaylistUrl
+      ? `<a class="text-link platform-link" href="${escapeHtml(site.spotifyPlaylistUrl)}" target="_blank" rel="noreferrer">Atlas Spotify playlist</a>`
+      : "",
+    site.youtubePlaylistUrl
+      ? `<a class="text-link platform-link" href="${escapeHtml(site.youtubePlaylistUrl)}" target="_blank" rel="noreferrer">Atlas YouTube playlist</a>`
+      : "",
+  ].filter(Boolean);
+  if (!links.length) return "";
+  return `<div class="playlist-actions" aria-label="Atlas playlist links">
+    <span>Playlists:</span>
+    ${links.join("\n    ")}
+  </div>`;
+}
+
+function listeningActions(song) {
+  const actions = [];
+  actions.push({
+    label: song.spotifyUrl ? "Open Spotify web" : "Find on Spotify",
+    url: song.spotifyUrl || spotifySearchUrl(song),
+    style: "primary platform-spotify",
+    external: true,
+  });
+  actions.push({
+    label: "Open app",
+    url: spotifyAppUri(song),
+    style: "secondary platform-spotify-app",
+    external: false,
+  });
+  if (song.watchUrl) {
+    actions.push({
+      label: song.watchLabel || "Watch official video",
+      url: song.watchUrl,
+      style: "secondary",
+      external: true,
+    });
+  }
+  if (song.sourceUrl && song.sourceUrl !== song.watchUrl) {
+    actions.push({
+      label: song.sourceLabel || "Source",
+      url: song.sourceUrl,
+      style: "secondary",
+      external: true,
+    });
+  }
+  return actions;
+}
+
+function spotifySearchUrl(song) {
+  return `https://open.spotify.com/search/${encodeURIComponent(`${song.title} ${song.artist}`)}`;
+}
+
+function spotifyAppUri(song) {
+  return spotifyUriFromUrl(song.spotifyUrl) || `spotify:search:${encodeURIComponent(`${song.title} ${song.artist}`)}`;
+}
+
+function spotifyUriFromUrl(url) {
+  if (!url) return null;
+  const match = url.match(/^https?:\/\/open\.spotify\.com\/(track|album|playlist|artist)\/([A-Za-z0-9]+)/);
+  if (!match) return null;
+  return `spotify:${match[1]}:${match[2]}`;
 }
 
 function songExplainer(song) {
@@ -1199,7 +1321,7 @@ function songFaqs(song) {
     },
     {
       question: `Where can I listen to ${song.title}?`,
-      answer: `Use the linked ${song.watchLabel || song.sourceLabel || "official source"} on this page. World Cup Music Atlas links out to official or reputable sources and does not host audio, lyrics, or copied video.`,
+      answer: `Use the Spotify, video, or source links on this page. World Cup Music Atlas links out to official or licensed platforms and does not host audio, lyrics, or copied video.`,
     },
   ];
 }
@@ -1389,6 +1511,7 @@ function artistExternalLinks(artist, artistSongs) {
   for (const song of artistSongs) {
     links.set(song.sourceUrl, song.sourceLabel || "Source");
     if (song.watchUrl) links.set(song.watchUrl, song.watchLabel || "Watch");
+    if (song.spotifyUrl) links.set(song.spotifyUrl, "Spotify");
   }
   if (!links.size) return "";
   return `<div class="source-links artist-source-links">
