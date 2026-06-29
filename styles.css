@@ -177,6 +177,28 @@ h1 {
   border-color: var(--gold);
 }
 
+.button.platform-spotify {
+  background: #1ed760;
+  color: #06130b;
+  border-color: #1ed760;
+}
+
+.button.platform-spotify-app {
+  color: #d9fbe5;
+  border-color: rgba(30, 215, 96, 0.55);
+  background: rgba(30, 215, 96, 0.12);
+}
+
+.platform-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .button.secondary {
   background: rgba(255, 255, 255, 0.1);
 }
@@ -429,7 +451,9 @@ h1 {
   overflow: hidden;
   border-bottom: 1px solid var(--line);
   border-radius: var(--radius) var(--radius) 0 0;
-  background: rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(circle at 50% 28%, rgba(246, 196, 83, 0.12), transparent 58%),
+    rgba(255, 255, 255, 0.055);
 }
 
 .card-media img {
@@ -437,6 +461,7 @@ h1 {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center 28%;
 }
 
 .song-meta {
@@ -664,7 +689,10 @@ h1 {
   display: block;
   width: 100%;
   aspect-ratio: 1 / 1;
-  object-fit: cover;
+  object-fit: contain;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(246, 196, 83, 0.12), transparent 58%),
+    rgba(255, 255, 255, 0.04);
 }
 
 .media-preview-link:focus-visible {
@@ -799,10 +827,75 @@ h1 {
   gap: 10px;
 }
 
+.watch-actions .button {
+  min-width: 146px;
+}
+
+.playlist-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.playlist-actions span {
+  font-weight: 900;
+  color: var(--ink);
+}
+
 .rights-note {
   margin: 0;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.listen-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+  margin-bottom: 34px;
+}
+
+.playlist-card {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-height: 290px;
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.028));
+  box-shadow: var(--shadow);
+}
+
+.playlist-card h2,
+.playlist-card p {
+  margin: 0;
+}
+
+.playlist-card h2 {
+  font-size: clamp(1.5rem, 3vw, 2.3rem);
+  line-height: 1.05;
+}
+
+.playlist-card p:not(.kicker) {
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.playlist-card .button {
+  width: fit-content;
+  margin-top: 8px;
+}
+
+.spotify-card {
+  border-color: rgba(30, 215, 96, 0.42);
+}
+
+.youtube-card {
+  border-color: rgba(225, 86, 63, 0.46);
 }
 
 .context-section {
@@ -1419,6 +1512,7 @@ h1 {
   .artist-grid,
   .artist-hero,
   .glossary-grid,
+  .listen-grid,
   .timeline-hero {
     grid-template-columns: 1fr;
   }
@@ -1445,17 +1539,12 @@ h1 {
   .visual-hero,
   .artist-hero {
     align-items: start;
+    gap: 16px;
   }
 
   .hero-media,
   .artist-portrait {
-    width: 132px;
-    grid-row: 1;
-  }
-
-  .artist-hero > div,
-  .visual-hero > div {
-    grid-row: 1;
+    width: 144px;
   }
 
   .timeline-track::before,
