@@ -5,7 +5,9 @@ const generatedLinks = document.querySelector("#generatedLinks");
 let activeFilter = "all";
 let songs = [];
 
-init();
+if (grid && searchInput) {
+  init();
+}
 
 async function init() {
   try {
@@ -125,15 +127,156 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-filterButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    activeFilter = button.dataset.filter;
-    filterButtons.forEach((item) => item.classList.toggle("active", item === button));
+if (grid && searchInput) {
+  filterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      activeFilter = button.dataset.filter;
+      filterButtons.forEach((item) => item.classList.toggle("active", item === button));
+      renderSongs();
+    });
+  });
+
+  searchInput.addEventListener("input", () => {
+    updateSearchUrl();
     renderSongs();
   });
+}
+
+document.querySelectorAll("[data-comment-section]").forEach((section) => {
+  const pageKey = section.dataset.commentKey;
+  const form = section.querySelector("[data-comment-form]");
+  const list = section.querySelector("[data-comment-list]");
+  const status = section.querySelector("[data-comment-status]");
+  const count = section.querySelector("[data-comment-count]");
+  const submit = section.querySelector("[data-comment-submit]");
+
+  if (!pageKey || !form || !list) return;
+
+  const setStatus = (message, tone = "") => {
+    if (!status) return;
+    status.textContent = message;
+    status.dataset.tone = tone;
+  };
+
+  const setLoading = (isLoading) => {
+    if (!submit) return;
+    submit.disabled = isLoading;
+    submit.textContent = isLoading ? "Posting..." : "Post";
+  };
+
+  const fetchComments = async () => {
+    const response = await fetch(`/api/comments?pageKey=${encodeURIComponent(pageKey)}`, {
+      headers: { Accept: "application/json" },
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) {
+      throw new Error(payload.error || "Could not load comments.");
+    }
+    return Array.isArray(payload.comments) ? payload.comments : [];
+  };
+
+  const postComment = async (name, comment) => {
+    const response = await fetch("/api/comments", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ pageKey, name, comment }),
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) {
+      throw new Error(payload.error || "Could not post comment.");
+    }
+    return Array.isArray(payload.comments) ? payload.comments : [];
+  };
+
+  const formatDate = (value) => {
+    try {
+      return value ? new Date(value).toLocaleDateString() : "";
+    } catch {
+      return "";
+    }
+  };
+
+  const render = (comments) => {
+    list.replaceChildren();
+    if (count) {
+      count.textContent = comments.length === 1 ? "1 comment" : `${comments.length} comments`;
+    }
+
+    if (!comments.length) {
+      const empty = document.createElement("p");
+      empty.className = "comment-empty";
+      empty.textContent = "No comments yet. Add the first note.";
+      list.append(empty);
+      return;
+    }
+
+    comments.forEach((comment) => {
+      const item = document.createElement("article");
+      item.className = "comment-item";
+
+      const meta = document.createElement("div");
+      meta.className = "comment-meta";
+
+      const name = document.createElement("strong");
+      name.textContent = comment.name || "Visitor";
+
+      const time = document.createElement("time");
+      time.dateTime = comment.createdAt || "";
+      time.textContent = formatDate(comment.createdAt);
+
+      const text = document.createElement("p");
+      text.textContent = comment.body || "";
+
+      meta.append(name, time);
+      item.append(meta, text);
+      list.append(item);
+    });
+  };
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const name = String(data.get("name") || "Visitor").trim().slice(0, 40) || "Visitor";
+    const text = String(data.get("comment") || "").trim().slice(0, 600);
+    if (!text) {
+      setStatus("Write a comment before posting.", "error");
+      return;
+    }
+
+    setLoading(true);
+    setStatus("Posting...");
+    postComment(name, text)
+      .then((comments) => {
+        form.reset();
+        render(comments);
+        setStatus("Posted. Thanks for the note.", "success");
+      })
+      .catch((error) => {
+        setStatus(error.message || "Could not post comment.", "error");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  });
+
+  fetchComments()
+    .then((comments) => {
+      render(comments);
+      setStatus("");
+    })
+    .catch((error) => {
+      render([]);
+      setStatus(error.message || "Comments are temporarily unavailable.", "error");
+    });
 });
 
-searchInput.addEventListener("input", () => {
-  updateSearchUrl();
-  renderSongs();
-});
+async function readJsonResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    throw new Error("Comments API is unavailable on this local server. Start the site with Wrangler Pages dev.");
+  }
+  return response.json();
+}

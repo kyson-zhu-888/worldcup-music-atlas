@@ -1,0 +1,8 @@
+name = "worldcup-music-atlas"
+pages_build_output_dir = ".deploy"
+compatibility_date = "2026-07-01"
+
+[[d1_databases]]
+binding = "COMMENTS_DB"
+database_name = "worldcup-music-atlas-comments"
+database_id = "d27853eb-d90b-470d-99e7-8c945abb3a61"

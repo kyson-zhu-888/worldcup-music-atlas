@@ -101,6 +101,12 @@ function generateSongPages() {
                 ${adBox()}
               </aside>
             </section>
+            ${commentSection({
+              key: `worldcup:song:${song.slug}`,
+              kicker: "Listener notes",
+              title: "Song comments",
+              placeholder: "Share a memory, correction, source, or question about this World Cup song...",
+            })}
             ${relatedList("Related songs", related, "../../")}
           </main>
         `,
@@ -185,6 +191,12 @@ function generateArtistPages() {
                 ${adBox()}
               </aside>
             </section>
+            ${commentSection({
+              key: `worldcup:artist:${artist.slug}`,
+              kicker: "Reader notes",
+              title: "Artist comments",
+              placeholder: `Share a World Cup music note, correction, or question about ${artist.name}...`,
+            })}
             ${relatedList("Related songs", artistSongs, "../../")}
           </main>
         `,
@@ -783,6 +795,7 @@ function layout({ title, description, depth, path: pagePath, type = "website", s
         <a href="${prefix}index.html">Home</a>
       </div>
     </footer>
+    <script src="${prefix}script.js"></script>
   </body>
 </html>
 `;
@@ -1875,6 +1888,35 @@ function adBox() {
       <a class="text-link" href="../../index.html#library">Library</a>
     </div>
   </aside>`;
+}
+
+function commentSection({ key, kicker, title, placeholder }) {
+  return `<section class="comment-section" data-comment-section data-comment-key="${escapeHtml(key)}">
+    <div class="comment-head">
+      <div>
+        <p class="kicker">${escapeHtml(kicker)}</p>
+        <h2>${escapeHtml(title)}</h2>
+      </div>
+      <span data-comment-count>Loading comments</span>
+    </div>
+    <form class="comment-form" data-comment-form>
+      <div class="comment-fields">
+        <label>
+          <span>Name</span>
+          <input name="name" type="text" maxlength="40" placeholder="Visitor" autocomplete="name">
+        </label>
+        <label>
+          <span>Comment</span>
+          <textarea name="comment" maxlength="600" rows="3" placeholder="${escapeHtml(placeholder)}" required></textarea>
+        </label>
+      </div>
+      <div class="comment-actions">
+        <p class="comment-status" data-comment-status role="status"></p>
+        <button type="submit" data-comment-submit>Post</button>
+      </div>
+    </form>
+    <div class="comment-list" data-comment-list></div>
+  </section>`;
 }
 
 function writePage(segments, html) {
